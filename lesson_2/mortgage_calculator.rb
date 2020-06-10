@@ -1,3 +1,6 @@
+require 'yaml'
+MESSAGES = YAML.load_file('mortgage_calculator_messages.yml') # Use configuration file
+
 def mortgage(p, a, y)
   # Calculate monthly payments
   # p = principle, a = APR, y = loan duration in years
@@ -17,11 +20,12 @@ end
 
 def validate_ans(ans, float=true)
   # Validate user provided answer; should be integer/float and > 0
-  valid_num = if float
-                Float(ans) rescue false
-              else
-                Integer(ans) rescue false
+  valid_num = begin
+                float ? Float(ans) : Integer(ans)
+              rescue 
+                false
               end
+         
   valid_num && ans.to_f > 0 ? true : false
 end
 
@@ -33,21 +37,21 @@ def input_loop(question, float=true)
     if validate_ans(answer, float)
       return answer
     else
-      puts prompt("Please enter a valid number greater than zero.")
+      puts prompt(MESSAGES["err_valid_num"])
     end
   end
 end
 
-puts prompt("Welcome to the Mortgage Calculator!")
+puts prompt(MESSAGES["welcome"])
 
-principle = input_loop("What is the loan amount? (Principle)")
-apr = input_loop("What is the annual percentage rate? (APR)")
-duration_years = input_loop("What is the loan duration in years?")
+principle = input_loop(MESSAGES["principle_msg"])
+apr = input_loop(MESSAGES["apr_msg"])
+duration_years = input_loop(MESSAGES["duration_years_msg"])
 
-puts prompt("Calculating...")
+puts prompt(MESSAGES["calculating"])
 
 monthly_payments = mortgage(principle, apr, duration_years).round(2)
 
-puts prompt("Your monthly payments are $#{monthly_payments} for #{duration_years.to_i * 12} months.")
+puts prompt(format(MESSAGES["result"], payments: monthly_payments, duration_months: duration_years.to_i*12))
 
-puts prompt("Thank you for using the calculator!")
+puts prompt(MESSAGES["thank_you"])

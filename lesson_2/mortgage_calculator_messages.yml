@@ -1,0 +1,8 @@
+err_valid_num: "Please enter a valid number greater than zero."
+welcome: "Welcome to the Mortgage Calculator!"
+principle_msg: "What is the loan amount? (Principle)"
+apr_msg: "What is the annual percentage rate? (APR)"
+duration_years_msg: "What is the loan duration in years?"
+calculating: "Calculating..."
+thank_you: "Thank you for using the calculator!"
+result: "Your monthly payments are $%{payments} for %{duration_months} months."
