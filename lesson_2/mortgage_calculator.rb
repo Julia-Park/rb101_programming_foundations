@@ -1,5 +1,5 @@
 require 'yaml'
-MESSAGES = YAML.load_file('mortgage_calculator_messages.yml') # Use configuration file
+MESSAGES = YAML.load_file('mortgage_calculator_messages.yml')
 
 def mortgage(p, a, y)
   # Calculate monthly payments
@@ -22,10 +22,9 @@ def validate_ans(ans, float=true)
   # Validate user provided answer; should be integer/float and > 0
   valid_num = begin
                 float ? Float(ans) : Integer(ans)
-              rescue 
+              rescue
                 false
               end
-         
   valid_num && ans.to_f > 0 ? true : false
 end
 
@@ -52,6 +51,6 @@ puts prompt(MESSAGES["calculating"])
 
 monthly_payments = mortgage(principle, apr, duration_years).round(2)
 
-puts prompt(format(MESSAGES["result"], payments: monthly_payments, duration_months: duration_years.to_i*12))
+puts prompt(format(MESSAGES["result"], payments: monthly_payments, duration_months: duration_years.to_i * 12))
 
 puts prompt(MESSAGES["thank_you"])
