@@ -8,7 +8,8 @@ WIN_SCENARIOS = { rock: ['scissors', 'lizard'],
 WIN_MSG = 'You win! Computer loses!'
 LOSE_MSG = 'You lose! Computer wins!'
 TIE_MSG = "It's a tie!"
-CONTINUE_CHOICES = ['y', 'yes']
+AFFIRMATIVE = ['y', 'yes']
+NEGATIVE = ['n', 'no']
 
 def prompt(message)
   puts(">> #{message}")
@@ -39,7 +40,7 @@ def display_choices
   display.join(', ')
 end
 
-def player_choice
+def game_choice
   loop do
     prompt("Choose one: #{display_choices}")
     ans = gets.chomp.downcase
@@ -51,6 +52,15 @@ def player_choice
 
     return ans if GAME_CHOICES.include?(ans)
     prompt("That's not a valid choice!")
+  end
+end
+
+def continue_ans(criteria_msg)
+  loop do
+    prompt(criteria_msg)
+    ans = gets.chomp.downcase
+
+    return ans if AFFIRMATIVE.include?(ans) || NEGATIVE.include?(ans)
   end
 end
 
@@ -67,7 +77,7 @@ loop do # match loop begin
     puts "- GAME #{total_games} -"
 
     # Player choice
-    choice = player_choice
+    choice = game_choice
 
     # Computer choice
     computer_choice = GAME_CHOICES.sample
@@ -92,23 +102,25 @@ loop do # match loop begin
 
     # Check if player/computer has 5 wins to end match
     if player_wins == 5
-      prompt('The game is over. You are the GRAND CHAMPION!')
+      prompt('The match is over. You are the GRAND CHAMPION!')
       break
     elsif computer_wins == 5
-      prompt('The game is over. The computer is the GRAND CHAMPION!')
+      prompt('The match is over. The computer is the GRAND CHAMPION!')
       break
     end
 
-    prompt("Do you want to keep playing? Enter 'yes' or 'y' to continue.")
-    answer = gets.chomp.downcase
-    break unless CONTINUE_CHOICES.include?(answer)
+    prompt('Do you want to continue playing the match?')
+    answer = continue_ans("Enter yes or y to continue, no or n to stop.")
 
-    puts "\n"
+    break if NEGATIVE.include?(answer)
+
+    puts "\n\n"
   end # game loop end
 
-  prompt("Do you want to play another match? Enter 'yes' or 'y' to begin.")
-  answer = gets.chomp.downcase
-  break unless CONTINUE_CHOICES.include?(answer)
+  prompt('Do you want to play another match?')
+  answer = continue_ans("Enter yes or y to play again, no or n to exit.")
+
+  break if NEGATIVE.include?(answer)
 
   puts "\n\n\n\n\n"
 end # match loop end
