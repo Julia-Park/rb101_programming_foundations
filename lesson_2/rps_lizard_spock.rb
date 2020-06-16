@@ -1,22 +1,14 @@
-VALID_CHOICES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
-VALID_CHOICES_ABV = VALID_CHOICES.map do |ans|
-                      case ans
-                      when 'scissors', 'spock'
-                        ans[0..1]
-                      else
-                        ans[0]
-                      end
-                    end
+GAME_CHOICES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
+GAME_CHOICES_ABV = ['r', 'p', 'sc', 'l', 'sp']
 WIN_SCENARIOS = { rock: ['scissors', 'lizard'],
                   paper: ['rock', 'spock'],
                   scissors: ['paper', 'lizard'],
                   lizard: ['paper', 'spock'],
-                  spock: ['scissors', 'rock']
-                }
-
+                  spock: ['scissors', 'rock'] }
 WIN_MSG = 'You win! Computer loses!'
 LOSE_MSG = 'You lose! Computer wins!'
 TIE_MSG = "It's a tie!"
+CONTINUE_CHOICES = ['y', 'yes']
 
 def prompt(message)
   puts(">> #{message}")
@@ -27,7 +19,7 @@ def win?(first, second)
   WIN_SCENARIOS[first.to_sym].include?(second)
 end
 
-def get_result(player, computer)
+def determine_result(player, computer)
   if win?(player, computer)
     WIN_MSG
   elsif win?(computer, player)
@@ -40,26 +32,29 @@ end
 def display_choices
   display = []
 
-  VALID_CHOICES.each do |value|
-    display << value + ' (' + VALID_CHOICES_ABV[VALID_CHOICES.index(value)] +')'
+  GAME_CHOICES.each do |value|
+    display << value + ' (' + GAME_CHOICES_ABV[GAME_CHOICES.index(value)] + ')'
   end
 
-  return display.join(', ')
+  display.join(', ')
 end
 
-def get_choice
+def player_choice
   loop do
     prompt("Choose one: #{display_choices}")
     ans = gets.chomp.downcase
 
-    ans = VALID_CHOICES[VALID_CHOICES_ABV.index(ans)] if VALID_CHOICES_ABV.include?(ans)
-    
-    return ans if VALID_CHOICES.include?(ans)
+    # replace abbreviation with full word of choice
+    if GAME_CHOICES_ABV.include?(ans)
+      ans = GAME_CHOICES[GAME_CHOICES_ABV.index(ans)]
+    end
+
+    return ans if GAME_CHOICES.include?(ans)
     prompt("That's not a valid choice!")
   end
 end
 
-prompt("Let's play #{VALID_CHOICES.join(', ')}!")
+prompt("Let's play #{GAME_CHOICES.join(', ')}!")
 prompt("The first to win 5 games is the match's grand champion!")
 
 loop do # match loop begin
@@ -67,28 +62,35 @@ loop do # match loop begin
   player_wins = 0
   computer_wins = 0
   total_games = 1
-  
+
   loop do # game loop begin
     puts "- GAME #{total_games} -"
 
-    choice = get_choice
+    # Player choice
+    choice = player_choice
 
-    computer_choice = VALID_CHOICES.sample
+    # Computer choice
+    computer_choice = GAME_CHOICES.sample
 
     prompt("You chose #{choice}.  The computer chose #{computer_choice}.")
 
-    result = get_result(choice, computer_choice)
+    # Figure out and display result of match up
+    result = determine_result(choice, computer_choice)
     prompt(result)
 
+    # Tally scores and games
     if result == WIN_MSG
       player_wins += 1
     elsif result == LOSE_MSG
       computer_wins += 1
     end
+
     total_games += 1
 
-    prompt("The current score is player: #{player_wins} and computer: #{computer_wins}!")
-  
+    prompt("The current score is player: #{player_wins} and " \
+          "computer: #{computer_wins}!")
+
+    # Check if player/computer has 5 wins to end match
     if player_wins == 5
       prompt('The game is over. You are the GRAND CHAMPION!')
       break
@@ -97,17 +99,17 @@ loop do # match loop begin
       break
     end
 
-    prompt("Do you want to keep playing? Enter 'yes' or 'y' to continue the match.")
+    prompt("Do you want to keep playing? Enter 'yes' or 'y' to continue.")
     answer = gets.chomp.downcase
-    break unless ['y', 'yes'].include?(answer)
+    break unless CONTINUE_CHOICES.include?(answer)
 
     puts "\n"
   end # game loop end
 
-  prompt("Do you want to play another match? Enter 'yes' or 'y' to begin new match.")
+  prompt("Do you want to play another match? Enter 'yes' or 'y' to begin.")
   answer = gets.chomp.downcase
-  break unless ['y', 'yes'].include?(answer)
-  
+  break unless CONTINUE_CHOICES.include?(answer)
+
   puts "\n\n\n\n\n"
 end # match loop end
 
