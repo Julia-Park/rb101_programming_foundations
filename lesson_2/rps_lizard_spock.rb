@@ -1,3 +1,6 @@
+require 'yaml'
+
+MESSAGES = YAML.load_file('rps_lizard_spock_messages.yml')
 GAME_CHOICES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
 GAME_CHOICES_ABV = ['r', 'p', 'sc', 'l', 'sp']
 WIN_SCENARIOS = { rock: ['scissors', 'lizard'],
@@ -5,11 +8,9 @@ WIN_SCENARIOS = { rock: ['scissors', 'lizard'],
                   scissors: ['paper', 'lizard'],
                   lizard: ['paper', 'spock'],
                   spock: ['scissors', 'rock'] }
-WIN_MSG = 'You win! Computer loses!'
-LOSE_MSG = 'You lose! Computer wins!'
-TIE_MSG = "It's a tie!"
 AFFIRMATIVE = ['y', 'yes']
 NEGATIVE = ['n', 'no']
+MATCH_WIN_NUMBER = 5
 
 def prompt(message)
   puts(">> #{message}")
@@ -20,13 +21,13 @@ def win?(first, second)
   WIN_SCENARIOS[first.to_sym].include?(second)
 end
 
-def determine_result(player, computer)
+def display_result(player, computer)
   if win?(player, computer)
-    WIN_MSG
+    MESSAGES['win']
   elsif win?(computer, player)
-    LOSE_MSG
+    MESSAGES['lose']
   else
-    TIE_MSG
+    MESSAGES['tie']
   end
 end
 
@@ -42,7 +43,7 @@ end
 
 def game_choice
   loop do
-    prompt("Choose one: #{display_choices}")
+    prompt(format(MESSAGES['game_instruction'], choices: display_choices))
     ans = gets.chomp.downcase
 
     # replace abbreviation with full word of choice
@@ -51,11 +52,14 @@ def game_choice
     end
 
     return ans if GAME_CHOICES.include?(ans)
-    prompt("That's not a valid choice!")
+    prompt(MESSAGES['invalid_choice'])
   end
 end
 
-def continue_ans(criteria_msg)
+def retrieve_continue_answer(initial_msg, criteria_msg)
+  puts "\n"
+  prompt(initial_msg)
+
   loop do
     prompt(criteria_msg)
     ans = gets.chomp.downcase
@@ -64,17 +68,60 @@ def continue_ans(criteria_msg)
   end
 end
 
-prompt("Let's play #{GAME_CHOICES.join(', ')}!")
-prompt("The first to win 5 games is the match's grand champion!")
+def display_welcome
+  puts "\n"
+  prompt(format(MESSAGES['rpsls_intro'], game_name: GAME_CHOICES.join(', ')))
+  prompt(format(MESSAGES['rpsls_description'],
+                match_condition: MATCH_WIN_NUMBER))
+  puts "\n"
+end
 
-loop do # match loop begin
-  puts "----- NEW MATCH BEGINS! -----\n"
-  player_wins = 0
-  computer_wins = 0
-  total_games = 1
+def display_game_start(scores)
+  puts format(MESSAGES['game_num'], number: scores[:total_games])
+  prompt(display_score(scores))
+end
 
-  loop do # game loop begin
-    puts "- GAME #{total_games} -"
+def update_scores(game_result, scores)
+  if game_result == MESSAGES['win']
+    scores[:player] += 1
+  elsif game_result == MESSAGES['lose']
+    scores[:computer] += 1
+  end
+
+  scores[:total_games] += 1
+end
+
+def display_score(scores)
+  format(MESSAGES['current_score'],
+         player_wins: scores[:player],
+         computer_wins: scores[:computer])
+end
+
+def winner?(score)
+  score == MATCH_WIN_NUMBER
+end
+
+def display_match_winner(scores)
+  if winner?(scores[:player])
+    MESSAGES['player_is_champion']
+  elsif winner?(scores[:computer])
+    MESSAGES['computer_is_champion']
+  end
+end
+
+# RPSLS start
+
+display_welcome
+
+loop do # Match loop begin
+  puts MESSAGES['new_match']
+
+  match_scores = { player: 0,
+                   computer: 0,
+                   total_games: 1 }
+
+  loop do # Game loop begin
+    display_game_start(match_scores)
 
     # Player choice
     choice = game_choice
@@ -82,47 +129,41 @@ loop do # match loop begin
     # Computer choice
     computer_choice = GAME_CHOICES.sample
 
-    prompt("You chose #{choice}.  The computer chose #{computer_choice}.")
+    # Display choices
+    prompt(format(MESSAGES['selected_choices'],
+                  player: choice,
+                  computer: computer_choice))
 
-    # Figure out and display result of match up
-    result = determine_result(choice, computer_choice)
+    result = display_result(choice, computer_choice)
     prompt(result)
 
-    # Tally scores and games
-    if result == WIN_MSG
-      player_wins += 1
-    elsif result == LOSE_MSG
-      computer_wins += 1
-    end
+    update_scores(result, match_scores)
 
-    total_games += 1
+    prompt(display_score(match_scores))
 
-    prompt("The current score is player: #{player_wins} and " \
-          "computer: #{computer_wins}!")
+    # Check if player/computer has enough wins to end match
+    result = display_match_winner(match_scores)
 
-    # Check if player/computer has 5 wins to end match
-    if player_wins == 5
-      prompt('The match is over. You are the GRAND CHAMPION!')
-      break
-    elsif computer_wins == 5
-      prompt('The match is over. The computer is the GRAND CHAMPION!')
+    unless result.nil?
+      prompt(result)
       break
     end
 
-    prompt('Do you want to continue playing the match?')
-    answer = continue_ans("Enter yes or y to continue, no or n to stop.")
-
+    # Continue match?
+    answer = retrieve_continue_answer(MESSAGES['continue_match'],
+                                      MESSAGES['continue_match_choices'])
     break if NEGATIVE.include?(answer)
 
-    puts "\n\n"
-  end # game loop end
+    system("clear")
+  end # Game loop end
 
-  prompt('Do you want to play another match?')
-  answer = continue_ans("Enter yes or y to play again, no or n to exit.")
-
+  # New match?
+  answer = retrieve_continue_answer(MESSAGES['another_match'],
+                                    MESSAGES['another_match_choices'])
   break if NEGATIVE.include?(answer)
 
-  puts "\n\n\n\n\n"
-end # match loop end
+  system("clear")
+end # Match loop end
 
-prompt('Thank you for playing. Goodbye!')
+puts("\n")
+prompt(MESSAGES['thank_you'])
