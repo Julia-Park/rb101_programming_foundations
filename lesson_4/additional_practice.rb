@@ -84,3 +84,53 @@ p frequency
 puts ''
 puts 'PRACTICE PROBLEM 8'
 
+# Output:
+# 1
+# 3
+
+
+# Eventually numbers == []
+
+# Output:
+# 1
+# 2
+
+puts ''
+puts 'PRACTICE PROBLEM 9'
+
+def titleize(string)
+  new_string = string.split.map { |word| word.capitalize }
+  new_string.join(' ')
+end
+
+p titleize('the flintstones rock') == "The Flintstones Rock"
+
+puts ''
+puts 'PRACTICE PROBLEM 10'
+
+munsters = {
+  "Herman" => { "age" => 32, "gender" => "male" },
+  "Lily" => { "age" => 30, "gender" => "female" },
+  "Grandpa" => { "age" => 402, "gender" => "male" },
+  "Eddie" => { "age" => 10, "gender" => "males" },
+  "Marilyn" => { "age" => 23, "gender" => "female"}
+}
+
+munsters.each do |name, stats|
+  stats['age_group'] =
+  #   if stats['age'] < 18
+  #     'kid'
+  #   elsif stats['age'] < 65
+  #     'adult'
+  #   else
+  #     'senior'
+  #   end
+    case stats['age']
+    when 0..17 then 'kid'
+    when 18..64 then 'adult'
+    else 'senior'
+    end
+end
+
+p munsters
+    
