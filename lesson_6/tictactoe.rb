@@ -3,6 +3,8 @@ require 'pry'
 INITIAL_MARKER = ' '
 PLAYER_MARKER = 'X'
 COMPUTER_MARKER = 'O'
+PLAYER_NAME = 'Player'
+COMPUTER_NAME = 'Computer'
 
 def prompt(msg)
   puts ">> #{msg}"
@@ -20,7 +22,7 @@ end
 
 def display_board(brd)
   system 'clear'
-  puts "You are #{PLAYER_MARKER}.  Computer is #{COMPUTER_MARKER}."
+  puts "You are #{PLAYER_MARKER}.  #{COMPUTER_NAME} is #{COMPUTER_MARKER}."
   puts ''
   puts '     |     |     '
   puts "  #{brd[1]}  |  #{brd[2]}  |  #{brd[3]}  "
@@ -77,9 +79,9 @@ def detect_winner(brd)
     markers_in_line = line.map { |square| brd[square] }.uniq
     case markers_in_line
     when [PLAYER_MARKER]
-      return 'Player'
+      return PLAYER_NAME
     when [COMPUTER_MARKER]
-      return 'Computer'
+      return COMPUTER_NAME
     end
   end
 
@@ -91,13 +93,38 @@ def someone_won?(brd)
   !!detect_winner(brd)
 end
 
+def current_score(scrs)
+  "The current score is: "\
+  "#{PLAYER_NAME}: #{scrs[PLAYER_NAME]} "\
+  "#{COMPUTER_NAME}: #{scrs[COMPUTER_NAME]}"
+end
+
+def keep_score!(scrs, winning_player)
+  # update scores
+  case winning_player
+  when PLAYER_NAME    then scrs[PLAYER_NAME] += 1
+  when COMPUTER_NAME  then scrs[COMPUTER_NAME] += 1
+  end
+end
+
+def detect_game_winner(scrs)
+  scrs.key(5)
+end
+
+def initialize_scores
+  {PLAYER_NAME => 0, COMPUTER_NAME => 0}
+end
+
 # Game logic
+scores = initialize_scores
+
 loop do
   board = initialize_board
 
   # Game Loop
   loop do
     display_board(board)
+    prompt current_score(scores)
 
     player_places_piece!(board)
     break if someone_won?(board) || board_full?(board)
@@ -109,9 +136,18 @@ loop do
   display_board(board)
 
   if someone_won?(board)
-    prompt "#{detect_winner(board)} won!"
+    winner = detect_winner(board)
+    keep_score!(scores, winner)
+    prompt "#{winner} won!"
+    prompt current_score(scores)
   else
     prompt "It's a tie!"
+    prompt current_score(scores)
+  end
+
+  if detect_game_winner(scores)
+    prompt "#{detect_game_winner(scores)} is the first to 5 wins. They win the game!"
+    scores = initialize_scores
   end
 
   prompt 'Play again? (y or n)'
