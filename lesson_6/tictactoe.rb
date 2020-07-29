@@ -182,7 +182,7 @@ def choose_first_player(iterations)
   when 'random'
     [PLAYER_NAME, COMPUTER_NAME].sample
   when 'alternating'
-    game_iterations.even? ? PLAYER_NAME : COMPUTER_NAME
+    iterations.even? ? PLAYER_NAME : COMPUTER_NAME
   else
     PLAYER_NAME
   end
