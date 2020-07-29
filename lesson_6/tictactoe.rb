@@ -1,5 +1,7 @@
 require 'pry'
+require 'yaml'
 
+MESSAGES = YAML.load_file('tictactoe_messages.yml')
 INITIAL_MARKER = ' '
 PLAYER_MARKER = 'X'
 COMPUTER_MARKER = 'O'
@@ -9,8 +11,8 @@ WINNING_LINES =
   [[1, 2, 3], [4, 5, 6], [7, 8, 9],
    [1, 4, 7], [2, 5, 8], [3, 6, 9],
    [1, 5, 9], [3, 5, 7]]
+WHO_GOES_FIRST = 'choose'
 # COMPUTER_NAME, PLAYER_NAME, 'choose', 'random', 'alternating'
-WHO_GOES_FIRST = 'random'
 GAME_WINNING_CONDITION = 5
 
 def prompt(msg)
@@ -60,10 +62,10 @@ end
 def player_places_piece!(brd)
   square = ''
   loop do
-    prompt "Choose a square (#{joinor(empty_squares(brd))}):"
+    prompt format(MESSAGES['choose_square'], joinor(empty_squares(brd)))
     square = gets.chomp.to_i
     break if empty_squares(brd).include?(square)
-    prompt "Sorry, that's not a valid choice"
+    prompt MESSAGES['invalid_choice']
   end
   brd[square] = PLAYER_MARKER
 end
@@ -124,9 +126,9 @@ def someone_won?(brd)
 end
 
 def current_score(scrs)
-  "The current score is: "\
-  "#{PLAYER_NAME}: #{scrs[PLAYER_NAME]} "\
-  "#{COMPUTER_NAME}: #{scrs[COMPUTER_NAME]}"
+  format(MESSAGES['current_score'],\
+         p_name: PLAYER_NAME, p_score: scrs[PLAYER_NAME],\
+         c_name: COMPUTER_NAME, c_score: scrs[COMPUTER_NAME])
 end
 
 def keep_score!(scrs, winning_player)
@@ -152,23 +154,38 @@ end
 def play_again?
   answer = ''
   loop do
-    prompt 'Play again? (y or n)'
+    prompt MESSAGES['play_again']
     answer = gets.chomp.downcase
     break if ('yn').include?(answer)
-    prompt "Sorry, that's not a valid choice"
+    prompt MESSAGES['invalid_choice']
   end
   answer == 'y'
 end
 
-def choose_first_player
+def player_picks_first_player
   answer = ''
   loop do
-    prompt "Who will go first? (#{PLAYER_NAME} or #{COMPUTER_NAME})"
+    prompt format(MESSAGES['pick_player'], PLAYER_NAME, COMPUTER_NAME)
     answer = gets.chomp.capitalize
     break if answer == PLAYER_NAME || answer == COMPUTER_NAME
-    prompt "Sorry, that's not a valid choice"
+    prompt MESSAGES['invalid_choice']
   end
   answer
+end
+
+def choose_first_player(iterations)
+  case WHO_GOES_FIRST
+  when PLAYER_NAME, COMPUTER_NAME
+    WHO_GOES_FIRST
+  when 'choose'
+    player_picks_first_player
+  when 'random'
+    [PLAYER_NAME, COMPUTER_NAME].sample
+  when 'alternating'
+    game_iterations.even? ? PLAYER_NAME : COMPUTER_NAME
+  else
+    PLAYER_NAME
+  end
 end
 
 def place_piece!(brd, player)
@@ -189,20 +206,7 @@ game_iterations = 0
 
 loop do
   board = initialize_board
-  first_player =
-    case WHO_GOES_FIRST
-    when PLAYER_NAME, COMPUTER_NAME
-      WHO_GOES_FIRST
-    when 'choose'
-      choose_first_player
-    when 'random'
-      [PLAYER_NAME, COMPUTER_NAME].sample
-    when 'alternating'
-      game_iterations.even? ? PLAYER_NAME : COMPUTER_NAME
-    else
-      PLAYER_NAME
-    end
-
+  first_player = choose_first_player(game_iterations)
   current_player = first_player
 
   # Turns
@@ -210,7 +214,7 @@ loop do
     display_board(board)
     prompt current_score(scores)
     if board.values.count(INITIAL_MARKER) > 7
-      prompt "#{first_player} goes first!"
+      prompt format(MESSAGES['goes_first'], first_player)
     end
     place_piece!(board, current_player)
     current_player = alternate_player(current_player)
@@ -223,16 +227,15 @@ loop do
   if someone_won?(board)
     winner = detect_winner(board)
     keep_score!(scores, winner)
-    prompt "#{winner} won!"
+    prompt format(MESSAGES['winner'], winner)
   else
-    prompt "It's a tie!"
+    prompt MESSAGES['tie']
   end
 
   prompt current_score(scores)
 
   if game_won?(scores)
-    prompt "#{detect_game_winner(scores)} is the first to 5 wins. "\
-           "They win the game!"
+    prompt format(MESSAGES['game_winner'], detect_game_winner(scores))
 
     scores = initialize_scores
   end
@@ -241,4 +244,4 @@ loop do
   break unless play_again?
 end
 
-prompt 'Thanks for playing Tic Tac Toe!  Good bye!'
+prompt MESSAGES['thanks']
