@@ -1,0 +1,3 @@
+show_hand: "%s has %s"
+choose_move: "Do you hit or stay?"
+invalid_choice: "That's not a valid choice!"
