@@ -28,7 +28,7 @@ def initialize_deck
 end
 
 def initialize_hands
-  hands = { PLAYER => [], DEALER => [] }
+  { PLAYER => [], DEALER => [] }
 end
 
 def deal_cards!(deck, hand, num_cards = 2)
@@ -58,7 +58,8 @@ def list_cards(hands, owner, hide_last_card = false)
   if hide_last_card
     prompt format(MESSAGES['show_hand_hidden'], owner, cards[0])
   else
-    prompt format(MESSAGES['show_hand'], owner, join_and(cards), card_sum(hands[owner]))
+    prompt format(MESSAGES['show_hand'],\
+                  owner, join_and(cards), card_sum(hands[owner]))
   end
 end
 
@@ -93,13 +94,13 @@ def card_sum(hand)
   end
 
   if !!first_ace_position # if there is an Ace
-    sum > 10 ? sum += 1 : sum += 11
+    sum += (sum > 10 ? 1 : 11)
   end
 
   sum
 end
 
-def any_bust?(hands) 
+def any_bust?(hands)
   hands.any? { |_, hand| bust?(hand) }
 end
 
@@ -108,18 +109,17 @@ def bust?(hand)
 end
 
 def who_busted(hands)
-  busted = hands.select { |owner, hand| bust?(hand) }.keys
+  busted = hands.select { |_, hand| bust?(hand) }.keys
   prompt format(MESSAGES['bust'], busted[0], other_player(busted[0]))
 end
 
 def who_won(hands)
-  max_sum = hands.map { |owner, hand| card_sum(hand) }.max
-
-  winner = hands.select { |owner, hand| card_sum(hand) == max_sum }.keys
+  max_sum = hands.map { |_, hand| card_sum(hand) }.max
+  winner = hands.select { |_, hand| card_sum(hand) == max_sum }.keys
 
   if winner.size == 1
     prompt format(MESSAGES['win'], winner[0])
-  else 
+  else
     prompt MESSAGES['tie']
   end
 end
