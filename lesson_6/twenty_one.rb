@@ -48,7 +48,7 @@ end
 def card_value(card)
   case card
   when 'K', 'Q', 'J' then 10
-  when 'A'           then 1
+  when 'A'           then 1 # all Aces are 1 unless it is the first Ace
   else               card.to_i
   end
 end
@@ -85,16 +85,15 @@ def choose_move
 end
 
 def card_sum(hand)
-  # First Ace = 11 unless sum of other cards is > 10
   sum = 0
   first_ace_position = hand.index('A') # nil if no Ace
 
-  hand.each.with_index do |card, index|
-    sum += card_value(card) if first_ace_position != index
+  hand.each.with_index do |card, index| # sum values for all except first Ace
+    sum += card_value(card) unless first_ace_position == index
   end
 
-  if !!first_ace_position # if there is an Ace
-    sum += (sum > 10 ? 1 : 11)
+  if !!first_ace_position # if there is a first Ace, add appropriate value
+    sum += (sum > 10 ? 1 : 11) # value determined by sum of other cards
   end
 
   sum
@@ -164,25 +163,24 @@ loop do
         list_cards(game_hands, PLAYER)
 
         answer = choose_move
-        break if %w(stay s).include?(answer)
+        break if %w(stay s).include?(answer)                # stay
 
-        deal_cards!(game_deck, game_hands[PLAYER], 1)
+        deal_cards!(game_deck, game_hands[PLAYER], 1)       # hit
 
         list_cards(game_hands, PLAYER)
-        break if any_bust?(game_hands)
+        break if any_bust?(game_hands)                      # check for bust
       end
-
       current_player = other_player(current_player)
 
     when DEALER # Dealer turn
       loop do
         list_cards(game_hands, DEALER)
-        break if any_bust?(game_hands)                          # bust
+        break if any_bust?(game_hands)                      # check for bust
 
-        if card_sum(game_hands[DEALER]) < DEALER_THRESHOLD      # hit
+        if card_sum(game_hands[DEALER]) < DEALER_THRESHOLD  # hit
           deal_cards!(game_deck, game_hands[DEALER], 1)
           prompt format(MESSAGES['hit'], DEALER)
-        else                                                    # stay
+        else                                                # stay
           prompt format(MESSAGES['stay'], DEALER)
           break
         end
