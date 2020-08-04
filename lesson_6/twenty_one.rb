@@ -7,6 +7,7 @@ DEALER = 'Dealer'
 PLAYER = 'Player'
 DEALER_THRESHOLD = 17
 BUST_VALUE = 21
+GAME_WIN_CONDITION = 5
 
 def prompt(msg)
   puts ">> #{msg}"
@@ -27,8 +28,8 @@ def initialize_deck
   deck.shuffle
 end
 
-def initialize_hands
-  { PLAYER => [], DEALER => [] }
+def initialize_game_hash(default_value)
+  { PLAYER => default_value.dup, DEALER => default_value.dup }
 end
 
 def deal_cards!(deck, hand, num_cards = 2)
@@ -53,24 +54,32 @@ def card_value(card)
   end
 end
 
-def list_cards(hands, owner, hide_last_card = false)
+def list_cards(hands, sums, owner, hide_last_card = false)
   cards = hands[owner].map { |card| card_name(card) }
   if hide_last_card
     prompt format(MESSAGES['show_hand_hidden'], owner, cards[0])
   else
     prompt format(MESSAGES['show_hand'],\
-                  owner, join_and(cards), card_sum(hands[owner]))
+                  owner, join_and(cards), sums[owner])
   end
 end
 
-def list_sums(hands)
-  message = []
-
-  hands.each do |owner, hand|
-    message << format(MESSAGES['totals'], owner, card_sum(hand))
-  end
+def list_sums(sums)
+  message =
+    sums.map do |owner, sum|
+      format(MESSAGES['sums'], owner, sum)
+    end
 
   prompt join_and(message)
+end
+
+def list_score(scores)
+  message =
+    scores.map do |owner, score|
+      "#{owner}: #{score}"
+    end
+
+  prompt MESSAGES['score'] + join_and(message)
 end
 
 def choose_move
@@ -99,28 +108,29 @@ def card_sum(hand)
   sum
 end
 
-def any_bust?(hands)
-  hands.any? { |_, hand| bust?(hand) }
-end
-
-def bust?(hand)
-  card_sum(hand) > BUST_VALUE
-end
-
-def who_busted(hands)
-  busted = hands.select { |_, hand| bust?(hand) }.keys
-  prompt format(MESSAGES['bust'], busted[0], other_player(busted[0]))
-end
-
-def who_won(hands)
-  max_sum = hands.map { |_, hand| card_sum(hand) }.max
-  winner = hands.select { |_, hand| card_sum(hand) == max_sum }.keys
-
-  if winner.size == 1
-    prompt format(MESSAGES['win'], winner[0])
-  else
-    prompt MESSAGES['tie']
+def update_sums!(sums, hands)
+  hands.each do |owner, hand|
+    sums[owner] = card_sum(hand)
   end
+end
+
+def any_bust?(sums)
+  sums.any? { |_, sum| bust?(sum) }
+end
+
+def bust?(sum)
+  sum > BUST_VALUE
+end
+
+def who_busted(sums)
+  busted = sums.select { |_, sum| bust?(sum) }.keys
+  busted[0]
+end
+
+def who_won(sums)
+  max_sum = sums.values.select { |sum| !bust?(sum) }.max
+  winner = sums.select { |_, sum| sum == max_sum }.keys
+  winner.size == 1 ? winner[0] : nil
 end
 
 def other_player(name)
@@ -142,13 +152,19 @@ def play_again?
 end
 
 # Game Start
+score_board = initialize_game_hash(0)
+
+# Round Start
 loop do
   # Set up
+  system 'clear'
   game_deck = initialize_deck
-  game_hands = initialize_hands
+  game_hands = initialize_game_hash([])
+  hand_sums = initialize_game_hash(0)
 
   deal_cards!(game_deck, game_hands[PLAYER])
   deal_cards!(game_deck, game_hands[DEALER])
+  update_sums!(hand_sums, game_hands)
 
   current_player = PLAYER
 
@@ -157,50 +173,74 @@ loop do
     case current_player
     when PLAYER # Player turn
       loop do
-        system 'clear'
+        system 'clear' if game_hands[PLAYER].size > 2
+        puts MESSAGES['lets_play']
+        puts MESSAGES['line']
+        puts format(MESSAGES['turn'], PLAYER)
 
-        list_cards(game_hands, DEALER, true)
-        list_cards(game_hands, PLAYER)
+        list_cards(game_hands, hand_sums, DEALER, true)
+        list_cards(game_hands, hand_sums, PLAYER)
 
         answer = choose_move
-        break if %w(stay s).include?(answer)                # stay
+        break if %w(stay s).include?(answer)            # stay
 
-        deal_cards!(game_deck, game_hands[PLAYER], 1)       # hit
+        deal_cards!(game_deck, game_hands[PLAYER], 1)   # hit
+        update_sums!(hand_sums, game_hands)
 
-        list_cards(game_hands, PLAYER)
-        break if any_bust?(game_hands)                      # check for bust
+        list_cards(game_hands, hand_sums, PLAYER)
+        break if any_bust?(hand_sums)                   # check for bust
       end
       current_player = other_player(current_player)
 
     when DEALER # Dealer turn
-      loop do
-        list_cards(game_hands, DEALER)
-        break if any_bust?(game_hands)                      # check for bust
+      puts MESSAGES['line']
+      puts format(MESSAGES['turn'], DEALER)
 
-        if card_sum(game_hands[DEALER]) < DEALER_THRESHOLD  # hit
+      loop do
+        list_cards(game_hands, hand_sums, DEALER)
+        break if any_bust?(hand_sums)                   # check for bust
+
+        if hand_sums[DEALER] < DEALER_THRESHOLD         # hit
           deal_cards!(game_deck, game_hands[DEALER], 1)
-          prompt format(MESSAGES['hit'], DEALER)
-        else                                                # stay
-          prompt format(MESSAGES['stay'], DEALER)
+          update_sums!(hand_sums, game_hands)
+
+          puts format(MESSAGES['hit'], DEALER)
+        else                                            # stay
+          puts format(MESSAGES['stay'], DEALER)
           break
         end
       end
     end
 
-    puts ''
-    break if any_bust?(game_hands)
+    break if any_bust?(hand_sums)
   end
 
-  # Determine winner
-  if any_bust?(game_hands)
-    who_busted(game_hands)
+  # Determine round winner
+  puts MESSAGES['line']
+  list_sums(hand_sums)
+
+  prompt format(MESSAGES['bust'], who_busted(hand_sums)) if any_bust?(hand_sums)
+
+  winner = who_won(hand_sums)
+  if !!winner
+    score_board[winner] += 1
+    prompt format(MESSAGES['win'], winner)
   else
-    list_sums(game_hands)
-    who_won(game_hands)
+    prompt MESSAGES['tie']
   end
 
+  puts MESSAGES['line']
+  list_score(score_board)
+
+  # Check for game winner
+  if score_board.value?(GAME_WIN_CONDITION)
+    prompt format(MESSAGES['game_win'],\
+                  score_board.key(GAME_WIN_CONDITION), GAME_WIN_CONDITION)
+    score_board = initialize_game_hash(0)
+  end
+
+  puts MESSAGES['line']
   break unless play_again?
 end
 
-puts ''
 prompt MESSAGES['thanks']
