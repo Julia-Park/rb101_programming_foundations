@@ -1,4 +1,4 @@
-lets_play: "Let's play Twenty-One!"
+lets_play: "Let's play %s!"
 show_hand: "%s has %s, totalling %s"
 show_hand_hidden: "%s has %s and an unknown card"
 choose_move: "Do you hit (h) or stay (s)?"

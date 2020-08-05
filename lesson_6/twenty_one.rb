@@ -5,9 +5,16 @@ MESSAGES = YAML.load_file('twenty_one_messages.yml')
 SUIT_CARDS = 'KQJA23456789'
 DEALER = 'Dealer'
 PLAYER = 'Player'
-DEALER_THRESHOLD = 17
-BUST_VALUE = 21
+DEALER_THRESHOLD = 27
+BUST_VALUE = 31
 GAME_WIN_CONDITION = 5
+NUMBER_WORDS =
+  { 1 => ['One', 'Ten'], 2 => ['Two', 'Twenty'], 3 => ['Three', 'Thirty'],
+    4 => ['Four', 'Forty'], 5 => ['Five', 'Fifty'], 6 => ['Six', 'Sixty'],
+    7 => ['Seven', 'Seventy'], 8 => ['Eight', 'Eighty'], 9 => ['Nine', 'Ninty'],
+    11 => 'Eleven', 12 => 'Twelve', 13 => 'Thirteen',
+    14 => 'Fourteen', 15 => 'Fifteen', 16 => 'Sixteen',
+    17 => 'Seventeen', 18 => 'Eighteen', 19 => 'Nineteen' }
 
 def prompt(msg)
   puts ">> #{msg}"
@@ -23,7 +30,48 @@ def join_and(array, delimiter = ', ', last_delimiter = 'and')
   end
 end
 
+def number_to_word_array(integer)
+  word_array =
+    integer.digits.map.with_index do |digit, index|
+      next if digit == 0
+
+      case index
+      when 0..1 then NUMBER_WORDS[digit][index]
+      when 2    then NUMBER_WORDS[digit][0] + ' ' + 'hundred'
+      when 3    then NUMBER_WORDS[digit][0] + ' ' + 'thousand'
+      else           next
+      end
+    end.reverse
+
+  convert_teen_number_words!(word_array, integer)
+
+  word_array
+end
+
+def convert_teen_number_words!(word_array, integer)
+  _, tens_and_ones = integer.divmod(100)
+
+  if NUMBER_WORDS.key?(tens_and_ones)
+    word_array[-2, 2] = [NUMBER_WORDS[tens_and_ones], nil]
+  end
+end
+
+def number_to_words(integer)
+  # Can only handle up to thousandths digit
+  return integer if integer.digits.size > 4
+
+  word_digits = number_to_word_array(integer)
+
+  # hyphenate tens and ones digit words
+  if !word_digits[-2, 2].any?(nil)
+    word_digits[-2, 2] = word_digits[-2, 2].join('-')
+  end
+
+  word_digits.join(' ')
+end
+
 def initialize_deck
+  # Opt for not tracking suits as not important to function of game
   deck = SUIT_CARDS.chars * 4
   deck.shuffle
 end
@@ -49,7 +97,7 @@ end
 def card_value(card)
   case card
   when 'K', 'Q', 'J' then 10
-  when 'A'           then 1 # all Aces are 1 unless it is the first Ace
+  when 'A'           then 1 # in practice, this won't actually be used
   else               card.to_i
   end
 end
@@ -95,14 +143,18 @@ end
 
 def card_sum(hand)
   sum = 0
-  first_ace_position = hand.index('A') # nil if no Ace
+  count_ace = 0
 
-  hand.each.with_index do |card, index| # sum values for all except first Ace
-    sum += card_value(card) unless first_ace_position == index
+  hand.each do |card|
+    if card == 'A'
+      count_ace += 1 # track number of Aces but don't add to sum yet
+    else
+      sum += card_value(card)
+    end
   end
 
-  if !!first_ace_position # if there is a first Ace, add appropriate value
-    sum += (sum > 10 ? 1 : 11) # value determined by sum of other cards
+  count_ace.times do
+    sum += (sum > BUST_VALUE - 11 ? 1 : 11)
   end
 
   sum
@@ -174,7 +226,7 @@ loop do
     when PLAYER # Player turn
       loop do
         system 'clear' if game_hands[PLAYER].size > 2
-        puts MESSAGES['lets_play']
+        puts format(MESSAGES['lets_play'], number_to_words(BUST_VALUE))
         puts MESSAGES['line']
         puts format(MESSAGES['turn'], PLAYER)
 
