@@ -9,12 +9,14 @@ DEALER_THRESHOLD = 27
 BUST_VALUE = 31
 GAME_WIN_CONDITION = 5
 NUMBER_WORDS =
-  { 1 => ['One', 'Ten'], 2 => ['Two', 'Twenty'], 3 => ['Three', 'Thirty'],
+  { 0 => [],
+    1 => ['One', 'Ten'], 2 => ['Two', 'Twenty'], 3 => ['Three', 'Thirty'],
     4 => ['Four', 'Forty'], 5 => ['Five', 'Fifty'], 6 => ['Six', 'Sixty'],
     7 => ['Seven', 'Seventy'], 8 => ['Eight', 'Eighty'], 9 => ['Nine', 'Ninty'],
     11 => 'Eleven', 12 => 'Twelve', 13 => 'Thirteen',
     14 => 'Fourteen', 15 => 'Fifteen', 16 => 'Sixteen',
-    17 => 'Seventeen', 18 => 'Eighteen', 19 => 'Nineteen' }
+    17 => 'Seventeen', 18 => 'Eighteen', 19 => 'Nineteen',
+    100 => 'Hundred', 1000 => 'Thousand' }
 
 def prompt(msg)
   puts ">> #{msg}"
@@ -30,31 +32,26 @@ def join_and(array, delimiter = ', ', last_delimiter = 'and')
   end
 end
 
+# rubocop:disable Metrics/AbcSize
 def number_to_word_array(integer)
-  word_array =
-    integer.digits.map.with_index do |digit, index|
-      next if digit == 0
+  int_array = integer.digits
 
-      case index
-      when 0..1 then NUMBER_WORDS[digit][index]
-      when 2    then NUMBER_WORDS[digit][0] + ' ' + 'hundred'
-      when 3    then NUMBER_WORDS[digit][0] + ' ' + 'thousand'
-      else           next
+  int_array.map.with_index do |digit, index|
+    case index
+    when 0
+      NUMBER_WORDS[digit][index] unless int_array[1] == 1
+    when 1
+      if (11..19).include?(integer % 100)
+        NUMBER_WORDS[10 + int_array[0]]
+      else
+        NUMBER_WORDS[digit][index]
       end
-    end.reverse
-
-  convert_teen_number_words!(word_array, integer)
-
-  word_array
+    when 2..3
+      NUMBER_WORDS[digit][0] + ' ' + NUMBER_WORDS[10**index]
+    end
+  end.reverse
 end
-
-def convert_teen_number_words!(word_array, integer)
-  _, tens_and_ones = integer.divmod(100)
-
-  if NUMBER_WORDS.key?(tens_and_ones)
-    word_array[-2, 2] = [NUMBER_WORDS[tens_and_ones], nil]
-  end
-end
+# rubocop:enable Metrics/AbcSize
 
 def number_to_words(integer)
   # Can only handle up to thousandths digit
@@ -67,7 +64,7 @@ def number_to_words(integer)
     word_digits[-2, 2] = word_digits[-2, 2].join('-')
   end
 
-  word_digits.join(' ')
+  word_digits.compact.join(' ')
 end
 
 def initialize_deck
