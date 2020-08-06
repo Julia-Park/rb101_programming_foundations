@@ -123,6 +123,7 @@ def list_sums(sums)
       format(MESSAGES['sums'], owner, sum)
     end
 
+  puts MESSAGES['line']
   prompt join_and(message)
 end
 
@@ -132,6 +133,7 @@ def list_score(scores)
       "#{owner}: #{score}"
     end
 
+  puts MESSAGES['line']
   prompt MESSAGES['score'] + join_and(message)
 end
 
@@ -290,7 +292,6 @@ loop do
   end
 
   # Determine round winner
-  puts MESSAGES['line']
   list_sums(hand_sums)
 
   prompt format(MESSAGES['bust'], who_busted(hand_sums)) if any_bust?(hand_sums)
@@ -303,7 +304,6 @@ loop do
     prompt MESSAGES['tie']
   end
 
-  puts MESSAGES['line']
   list_score(score_board)
 
   # Check for game winner
