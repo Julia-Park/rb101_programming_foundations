@@ -5,8 +5,8 @@ MESSAGES = YAML.load_file('twenty_one_messages.yml')
 SUIT_CARDS = 'KQJA23456789'
 DEALER = 'Dealer'
 PLAYER = 'Player'
-DEALER_THRESHOLD = 27
-BUST_VALUE = 31
+DEALER_THRESHOLD = 17
+BUST_VALUE = 21
 GAME_WIN_CONDITION = 5
 NUMBER_WORDS =
   { 0 => [],
@@ -77,8 +77,16 @@ def initialize_game_hash(default_value)
   { PLAYER => default_value.dup, DEALER => default_value.dup }
 end
 
-def deal_cards!(deck, hand, num_cards = 2)
-  deck.pop(num_cards).each { |card| hand << card }
+def deal_cards!(deck, hands, sums, owner = nil, num_cards = 2)
+  if owner.nil? # deal to everyone
+    hands.each do |_, hand|
+      deck.pop(num_cards).each { |card| hand << card }
+    end
+  else # deal to specific person
+    deck.pop(num_cards).each { |card| hands[owner] << card }
+  end
+
+  update_sums!(sums, hands)
 end
 
 def card_name(card)
@@ -200,20 +208,68 @@ def play_again?
   %w(y yes).include?(answer)
 end
 
+def display_turn_start(owner)
+  puts MESSAGES['line']
+  puts format(MESSAGES['turn'], owner)
+end
+
+def dealer_turn!(deck, hands, sums)
+  loop do
+    list_cards(hands, sums, DEALER)
+    break if any_bust?(sums)                   # check for bust
+
+    if sums[DEALER] < DEALER_THRESHOLD         # hit
+      deal_cards!(deck, hands, sums, DEALER, 1)
+
+      puts format(MESSAGES['hit'], DEALER)
+    else                                       # stay
+      puts format(MESSAGES['stay'], DEALER)
+      break
+    end
+  end
+end
+
+def player_turn!(deck, hands, sums)
+  loop do
+    if hands[PLAYER].size > 2
+      system 'clear'
+      puts format(MESSAGES['lets_play'], number_to_words(BUST_VALUE))
+    end
+
+    display_turn_start(PLAYER)
+
+    list_cards(hands, sums, DEALER, true)
+    list_cards(hands, sums, PLAYER)
+
+    break if %w(stay s).include?(choose_move) # stay
+
+    deal_cards!(deck, hands, sums, PLAYER, 1) # hit
+
+    list_cards(hands, sums, PLAYER)
+    break if any_bust?(sums)                  # check for bust
+  end
+end
+
 # Game Start
 score_board = initialize_game_hash(0)
+game_deck = nil
 
 # Round Start
 loop do
   # Set up
   system 'clear'
+  puts format(MESSAGES['lets_play'], number_to_words(BUST_VALUE))
+
+  if game_deck.nil?
+    puts format(MESSAGES['round_instructions'], BUST_VALUE, BUST_VALUE)
+    puts format(MESSAGES['game_instructions'], GAME_WIN_CONDITION)
+  end
+
   game_deck = initialize_deck
   game_hands = initialize_game_hash([])
   hand_sums = initialize_game_hash(0)
 
-  deal_cards!(game_deck, game_hands[PLAYER])
-  deal_cards!(game_deck, game_hands[DEALER])
-  update_sums!(hand_sums, game_hands)
+  deal_cards!(game_deck, game_hands, hand_sums)
 
   current_player = PLAYER
 
@@ -221,44 +277,13 @@ loop do
   2.times do
     case current_player
     when PLAYER # Player turn
-      loop do
-        system 'clear' if game_hands[PLAYER].size > 2
-        puts format(MESSAGES['lets_play'], number_to_words(BUST_VALUE))
-        puts MESSAGES['line']
-        puts format(MESSAGES['turn'], PLAYER)
+      player_turn!(game_deck, game_hands, hand_sums)
 
-        list_cards(game_hands, hand_sums, DEALER, true)
-        list_cards(game_hands, hand_sums, PLAYER)
-
-        answer = choose_move
-        break if %w(stay s).include?(answer)            # stay
-
-        deal_cards!(game_deck, game_hands[PLAYER], 1)   # hit
-        update_sums!(hand_sums, game_hands)
-
-        list_cards(game_hands, hand_sums, PLAYER)
-        break if any_bust?(hand_sums)                   # check for bust
-      end
       current_player = other_player(current_player)
-
     when DEALER # Dealer turn
-      puts MESSAGES['line']
-      puts format(MESSAGES['turn'], DEALER)
+      display_turn_start(DEALER)
 
-      loop do
-        list_cards(game_hands, hand_sums, DEALER)
-        break if any_bust?(hand_sums)                   # check for bust
-
-        if hand_sums[DEALER] < DEALER_THRESHOLD         # hit
-          deal_cards!(game_deck, game_hands[DEALER], 1)
-          update_sums!(hand_sums, game_hands)
-
-          puts format(MESSAGES['hit'], DEALER)
-        else                                            # stay
-          puts format(MESSAGES['stay'], DEALER)
-          break
-        end
-      end
+      dealer_turn!(game_deck, game_hands, hand_sums)
     end
 
     break if any_bust?(hand_sums)
