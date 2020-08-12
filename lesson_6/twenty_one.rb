@@ -1,13 +1,18 @@
 require 'yaml'
 
 MESSAGES = YAML.load_file('twenty_one_messages.yml')
-SUIT_CARDS = 'KQJA23456789'
+SUIT_CARDS = %w(K Q J A 2 3 4 5 6 7 8 9 0)
+SUITS = %w(D S C H)
 DEALER = 'Dealer'
 PLAYER = 'Player'
 DELAY = 1
 DEALER_THRESHOLD = 17
 BUST_VALUE = 21
 GAME_WIN_CONDITION = 5
+NAMED_CARDS =
+  { 'K' => 'King', 'Q' => 'Queen', 'J' => 'Jack', 'A' => 'Ace', '0' => '10' }
+SUIT_NAMES =
+  { 'D' => 'Diamonds', 'C' => 'Clubs', 'S' => 'Spades', 'H' => 'Hearts' }
 NUMBER_WORDS =
   { 0 => [],
     1 => ['One', 'Ten'], 2 => ['Two', 'Twenty'], 3 => ['Three', 'Thirty'],
@@ -68,8 +73,7 @@ def number_to_words(integer)
 end
 
 def initialize_deck
-  # Opt for not tracking suits as not important to function of game
-  deck = SUIT_CARDS.chars * 4
+  deck = SUITS.product(SUIT_CARDS)
   deck.shuffle
 end
 
@@ -90,20 +94,20 @@ def deal_cards!(deck, hands, sums, owner = nil, num_cards = 2)
 end
 
 def card_name(card)
-  case card
-  when 'K' then 'King'
-  when 'Q' then 'Queen'
-  when 'J' then 'Jack'
-  when 'A' then 'Ace'
-  else          card
-  end
+  value_name =
+    case card[1]
+    when 'K', 'Q', 'J', '0', 'A' then NAMED_CARDS[card[1]]
+    else                              card[1]
+    end
+
+  "#{value_name} of #{SUIT_NAMES[card[0]]}"
 end
 
 def card_value(card)
-  case card
-  when 'K', 'Q', 'J' then 10
+  case card[1]
+  when 'K', 'Q', 'J', '0' then 10
   when 'A'           then 1 # in practice, this won't actually be used
-  else               card.to_i
+  else               card[1].to_i
   end
 end
 
@@ -123,7 +127,7 @@ def cards_sum(hand)
   count_ace = 0
 
   hand.each do |card|
-    if card == 'A'
+    if card[1] == 'A'
       count_ace += 1 # track number of Aces but don't add to sum yet
     else
       sum += card_value(card)
