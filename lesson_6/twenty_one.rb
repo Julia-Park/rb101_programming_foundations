@@ -1,10 +1,10 @@
 require 'yaml'
-require 'pry'
 
 MESSAGES = YAML.load_file('twenty_one_messages.yml')
 SUIT_CARDS = 'KQJA23456789'
 DEALER = 'Dealer'
 PLAYER = 'Player'
+DELAY = 1
 DEALER_THRESHOLD = 17
 BUST_VALUE = 21
 GAME_WIN_CONDITION = 5
@@ -41,7 +41,7 @@ def number_to_word_array(integer)
     when 0
       NUMBER_WORDS[digit][index] unless int_array[1] == 1
     when 1
-      if (11..19).include?(integer % 100)
+      if (11..19).cover?(integer % 100)
         NUMBER_WORDS[10 + int_array[0]]
       else
         NUMBER_WORDS[digit][index]
@@ -107,37 +107,7 @@ def card_value(card)
   end
 end
 
-def list_cards(hands, sums, owner, hide_last_card = false)
-  cards = hands[owner].map { |card| card_name(card) }
-  if hide_last_card
-    prompt format(MESSAGES['show_hand_hidden'], owner, cards[0])
-  else
-    prompt format(MESSAGES['show_hand'],\
-                  owner, join_and(cards), sums[owner])
-  end
-end
-
-def list_sums(sums)
-  message =
-    sums.map do |owner, sum|
-      format(MESSAGES['sums'], owner, sum)
-    end
-
-  puts MESSAGES['line']
-  prompt join_and(message)
-end
-
-def list_score(scores)
-  message =
-    scores.map do |owner, score|
-      "#{owner}: #{score}"
-    end
-
-  puts MESSAGES['line']
-  prompt MESSAGES['score'] + join_and(message)
-end
-
-def choose_move
+def user_choose_move
   answer = ''
   loop do
     prompt MESSAGES['choose_move']
@@ -148,7 +118,7 @@ def choose_move
   answer
 end
 
-def card_sum(hand)
+def cards_sum(hand)
   sum = 0
   count_ace = 0
 
@@ -169,8 +139,12 @@ end
 
 def update_sums!(sums, hands)
   hands.each do |owner, hand|
-    sums[owner] = card_sum(hand)
+    sums[owner] = cards_sum(hand)
   end
+end
+
+def update_scores!(scores, winning_player)
+  scores[winning_player] += 1
 end
 
 def any_bust?(sums)
@@ -192,7 +166,7 @@ def who_won(sums)
   winner.size == 1 ? winner[0] : nil
 end
 
-def other_player(name)
+def switch_player_turn(name)
   case name
   when PLAYER then DEALER
   when DEALER then PLAYER
@@ -201,6 +175,9 @@ end
 
 def play_again?
   answer = ''
+  puts MESSAGES['line']
+  sleep DELAY + 0.5
+
   loop do
     prompt MESSAGES['play_again']
     answer = gets.chomp.downcase
@@ -210,20 +187,18 @@ def play_again?
   %w(y yes).include?(answer)
 end
 
-def display_turn_start(owner)
-  puts MESSAGES['line']
-  puts format(MESSAGES['turn'], owner)
-end
-
 def dealer_turn!(deck, hands, sums)
+  display_turn_start(DEALER)
+
   loop do
-    list_cards(hands, sums, DEALER)
+    display_cards(hands, sums, DEALER)
     break if any_bust?(sums)                   # check for bust
 
+    sleep DELAY
     if sums[DEALER] < DEALER_THRESHOLD         # hit
-      deal_cards!(deck, hands, sums, DEALER, 1)
-
       puts format(MESSAGES['hit'], DEALER)
+
+      deal_cards!(deck, hands, sums, DEALER, 1)
     else                                       # stay
       puts format(MESSAGES['stay'], DEALER)
       break
@@ -235,21 +210,105 @@ def player_turn!(deck, hands, sums)
   loop do
     if hands[PLAYER].size > 2
       system 'clear'
-      puts format(MESSAGES['lets_play'], number_to_words(BUST_VALUE))
+      display_welcome_message(deck)
+    else
+      sleep DELAY
     end
 
     display_turn_start(PLAYER)
 
-    list_cards(hands, sums, DEALER, true)
-    list_cards(hands, sums, PLAYER)
+    display_cards(hands, sums, DEALER, true)
+    display_cards(hands, sums, PLAYER)
 
-    break if %w(stay s).include?(choose_move) # stay
+    break if %w(stay s).include?(user_choose_move) # stay
 
-    deal_cards!(deck, hands, sums, PLAYER, 1) # hit
+    deal_cards!(deck, hands, sums, PLAYER, 1)      # hit
 
-    list_cards(hands, sums, PLAYER)
-    break if any_bust?(sums)                  # check for bust
+    display_cards(hands, sums, PLAYER)
+    break if any_bust?(sums)                       # check for bust
   end
+end
+
+def both_players_play!(deck, hands, sums)
+  current_player = PLAYER
+
+  2.times do
+    case current_player
+    when PLAYER
+      player_turn!(deck, hands, sums)
+      current_player = switch_player_turn(current_player)
+    when DEALER
+      dealer_turn!(deck, hands, sums)
+    end
+
+    break if any_bust?(sums)
+  end
+end
+
+def display_cards(hands, sums, owner, hide_last_card = false)
+  cards = hands[owner].map { |card| card_name(card) }
+  if hide_last_card
+    prompt format(MESSAGES['show_hand_hidden'], owner, cards[0])
+  else
+    prompt format(MESSAGES['show_hand'],\
+                  owner, join_and(cards), sums[owner])
+  end
+end
+
+def display_sum(sums)
+  message =
+    sums.map do |owner, sum|
+      format(MESSAGES['sums'], owner, sum)
+    end
+
+  puts MESSAGES['line']
+  sleep DELAY
+  prompt join_and(message)
+end
+
+def display_welcome_message(deck)
+  puts format(MESSAGES['lets_play'], number_to_words(BUST_VALUE))
+
+  display_all_instructions if deck.nil?
+
+  puts MESSAGES['line']
+end
+
+def display_all_instructions
+  puts format(MESSAGES['round_instructions'], BUST_VALUE, BUST_VALUE)
+  puts format(MESSAGES['game_instructions'], GAME_WIN_CONDITION)
+end
+
+def display_turn_start(owner)
+  puts format(MESSAGES['turn'], owner)
+end
+
+def display_scores(scores)
+  message = scores.map { |owner, score| "#{owner}: #{score}" }
+
+  puts MESSAGES['line']
+  prompt MESSAGES['score'] + join_and(message)
+end
+
+def display_bust_message(busted_player)
+  prompt format(MESSAGES['bust'], busted_player)
+end
+
+def display_win_message(winning_player)
+  prompt format(MESSAGES['win'], winning_player)
+end
+
+def display_tie_message
+  prompt MESSAGES['tie']
+end
+
+def display_game_win_message(scores)
+  prompt format(MESSAGES['game_win'],\
+                scores.key(GAME_WIN_CONDITION), GAME_WIN_CONDITION)
+end
+
+def display_thank_you_message
+  prompt MESSAGES['thanks']
 end
 
 # Game Start
@@ -260,12 +319,7 @@ game_deck = nil
 loop do
   # Set up
   system 'clear'
-  puts format(MESSAGES['lets_play'], number_to_words(BUST_VALUE))
-
-  if game_deck.nil?
-    puts format(MESSAGES['round_instructions'], BUST_VALUE, BUST_VALUE)
-    puts format(MESSAGES['game_instructions'], GAME_WIN_CONDITION)
-  end
+  display_welcome_message(game_deck)
 
   game_deck = initialize_deck
   game_hands = initialize_game_hash([])
@@ -273,48 +327,31 @@ loop do
 
   deal_cards!(game_deck, game_hands, hand_sums)
 
-  current_player = PLAYER
-
   # Turns
-  2.times do
-    case current_player
-    when PLAYER # Player turn
-      player_turn!(game_deck, game_hands, hand_sums)
+  both_players_play!(game_deck, game_hands, hand_sums)
 
-      current_player = other_player(current_player)
-    when DEALER # Dealer turn
-      display_turn_start(DEALER)
+  # Outcome
+  display_sum(hand_sums)
 
-      dealer_turn!(game_deck, game_hands, hand_sums)
-    end
-
-    break if any_bust?(hand_sums)
-  end
-
-  # Determine round winner
-  list_sums(hand_sums)
-
-  prompt format(MESSAGES['bust'], who_busted(hand_sums)) if any_bust?(hand_sums)
+  display_bust_message(who_busted(hand_sums)) if any_bust?(hand_sums)
 
   winner = who_won(hand_sums)
   if !!winner
-    score_board[winner] += 1
-    prompt format(MESSAGES['win'], winner)
+    update_scores!(score_board, winner)
+    display_win_message(winner)
   else
-    prompt MESSAGES['tie']
+    display_tie_message
   end
 
-  list_score(score_board)
+  display_scores(score_board)
 
   # Check for game winner
   if score_board.value?(GAME_WIN_CONDITION)
-    prompt format(MESSAGES['game_win'],\
-                  score_board.key(GAME_WIN_CONDITION), GAME_WIN_CONDITION)
+    display_game_win_message(score_board)
     score_board = initialize_game_hash(0)
   end
 
-  puts MESSAGES['line']
   break unless play_again?
 end
 
-prompt MESSAGES['thanks']
+display_thank_you_message
